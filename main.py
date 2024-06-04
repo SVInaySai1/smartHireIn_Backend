@@ -1,7 +1,9 @@
 # app.py
 from flask import Flask
-from routes.login import login
 from schemas.all_db import initialize_database
+from flask_cors import CORS
+
+from routes.login import login
 
 from email_otp_generation import send_otp_route, verify_otp_route
 
@@ -15,6 +17,7 @@ from routes.team_form import create_team, get_team, update_team, delete_team
 
 
 app = Flask(__name__)
+CORS(app)
 
 #basic info form 
 app.route('/create_basic_info', methods=['POST'])(create_basic_info)
@@ -46,9 +49,9 @@ app.route('/get_team', methods=['GET'])(get_team)
 app.route('/update_team', methods=['PUT'])(update_team)
 app.route('/delete_team', methods=['DELETE'])(delete_team)
 
+
 #registration form crud operations
 app.route('/create_user', methods=['POST'])(create_user)
-
 app.route('/get_user', methods=['GET'])(get_user)
 app.route('/update_user', methods=['PUT'])(update_user)
 app.route('/delete_user', methods=['DELETE'])(delete_user)

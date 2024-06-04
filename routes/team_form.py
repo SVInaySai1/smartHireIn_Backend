@@ -3,7 +3,6 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from flask import Flask, request, jsonify
-from schemas.team_form_db import initialize_database
 from database_connection import get_db_connection
 import pymysql
 
@@ -105,7 +104,3 @@ def delete_team():
     finally:
         cursor.close()
         connection.close()
-
-if __name__ == '__main__':
-    initialize_database()
-    app.run(debug=True)

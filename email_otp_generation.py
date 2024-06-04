@@ -1,11 +1,26 @@
+import os
+import re
 import random
 import smtplib
+import msal
 from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
 
 # In-memory storage for OTPs
 otp_store = {}
+
+EMAIL_ADDRESS = "visaliveru@pagoanalytics.com"  # Replace with your email address
+EMAIL_PASSWORD = "Vinaysai@123"             # Replace with your email password
+SMTP_SERVER = "smtp.office365.com"                      # SMTP server for Office 365
+SMTP_PORT = 587     
+
+# OAuth 2.0 credentials
+CLIENT_ID = "aea4387e-aa87-4dd8-a39d-f8f910e0eaeb"
+CLIENT_SECRET = "a2250dfb-4305-44a8-ab13-7ff96494c6ba"
+TENANT_ID = "aa5996e2-2eac-4d32-bc0e-8615db92fef5"
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+SCOPES = ["https://outlook.office365.com/.default"]
 
 # HTML template string
 otp_template = """
@@ -27,7 +42,7 @@ otp_template = """
             background-color: #4CAF50;
             color: white;
             padding: 10px;
-            text-align: center;
+            text-align: center.
         }
         .body {
             margin-top: 20px;
@@ -35,9 +50,9 @@ otp_template = """
         }
         .footer {
             margin-top: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #888;
+            text-align: center.
+            font-size: 12px.
+            color: #888.
         }
     </style>
 </head>
@@ -47,8 +62,7 @@ otp_template = """
             <h1>OTP Verification</h1>
         </div>
         <div class="body">
-            <p>Dear {{name}},</p>
-            <p>Your One-Time Password (OTP) is <strong>{{otp}}</strong>.</p>
+            <p>Your One-Time Password (OTP) is <strong>{{ otp }}</strong>.</p>
             <p>Please use this OTP to complete your verification process. This OTP is valid for a short period.</p>
         </div>
         <div class="footer">
@@ -60,34 +74,44 @@ otp_template = """
 """
 
 def email_verification(email):
-    email_domains = ["gmail", "hotmail", "yahoo", "outlook"]
-    email_endings = [".com", ".in", ".org", ".edu", ".co.in"]
-    
-    if "@" not in email:
-        return False
-    
-    domain_part = email.split("@")[1]
-    domain_check = any(domain in domain_part for domain in email_domains)
-    ending_check = any(domain_part.endswith(ending) for ending in email_endings)
+    email_regex = re.compile(r"[^@]+@[^@]+\.[^@]+")
+    return re.match(email_regex, email) is not None
 
-    return domain_check and ending_check
+def get_access_token():
+    app = msal.ConfidentialClientApplication(
+        CLIENT_ID,
+        authority=AUTHORITY,
+        client_credential=CLIENT_SECRET
+    )
+    result = app.acquire_token_for_client(scopes=SCOPES)
+    if "access_token" in result:
+        return result["access_token"]
+    else:
+        raise Exception("Could not obtain access token")
 
-def send_otp(email, name, otp):
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    password = "stqqwjqoocucknsx"  # Replace with your actual app password
-    server.login("priyanshu25122002@gmail.com", password)
-    
-    body = render_template_string(otp_template, name=name, otp=otp)
-    subject = "OTP Verification using Python"
-    message = f"Subject: {subject}\nContent-Type: text/html\n\n{body}"
-    
-    server.sendmail("priyanshu25122002@gmail.com", email, message)
-    server.quit()
+def send_otp(email, otp):
+    try:
+        access_token = get_access_token()
+        auth_string = f"user={EMAIL_ADDRESS}\1auth=Bearer {access_token}\1\1"
+        auth_string = auth_string.encode("ascii")
+        
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.docmd("AUTH", "XOAUTH2 " + auth_string.decode("ascii"))
 
+        body = render_template_string(otp_template, otp=otp)
+        subject = "OTP Verification using Python"
+        message = f"Subject: {subject}\nContent-Type: text/html\n\n{body}"
+        
+        server.sendmail(EMAIL_ADDRESS, email, message)
+        server.quit()
+    except Exception as e:
+        app.logger.error(f"Failed to send email: {e}")
+        raise
+
+@app.route('/send-otp', methods=['POST'])
 def send_otp_route():
     data = request.json
-    name = data.get('name')
     email = data.get('email')
     
     if not email_verification(email):
@@ -95,10 +119,11 @@ def send_otp_route():
     
     otp = random.randint(100000, 999999)
     otp_store[email] = otp
-    send_otp(email, name, otp)
+    send_otp(email, otp)
     
     return jsonify({"message": f"OTP has been sent to {email}. Please check your email."})
 
+@app.route('/verify-otp', methods=['POST'])
 def verify_otp_route():
     data = request.json
     email = data.get('email')
@@ -107,7 +132,7 @@ def verify_otp_route():
     if email not in otp_store:
         return jsonify({"error": "Email not found"}), 400
     
-    if otp_store[email] == otp_provided:
+    if otp_store[email] == int(otp_provided):
         del otp_store[email]  # OTP is used, remove it
         return jsonify({"message": "OTP verified successfully"})
     else:
