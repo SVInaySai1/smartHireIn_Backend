@@ -12,8 +12,7 @@ def initialize_database_profile():
             email_id VARCHAR(255) NOT NULL UNIQUE,
             phone VARCHAR(15) NOT NULL,
             first_name VARCHAR(255) NOT NULL,
-            last_name VARCHAR(255) NOT NULL,
-            image BLOB NOT NULL
+            last_name VARCHAR(255) NOT NULL
         )
         """)
         connection.commit()

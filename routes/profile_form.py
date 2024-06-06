@@ -15,18 +15,15 @@ def create_profile():
     phone = data.get('phone')
     first_name = data.get('first_name')
     last_name = data.get('last_name')
-    image = request.files.get('image')
 
-    if not email_id or not phone or not first_name or not last_name or not image:
+    if not email_id or not phone or not first_name or not last_name:
         return jsonify({'error': 'Invalid input'}), 400
-
-    image_data = image.read()
 
     connection = get_db_connection()
     cursor = connection.cursor()
     try:
-        cursor.execute("INSERT INTO profile_form (email_id, phone, first_name, last_name, image) VALUES (%s, %s, %s, %s, %s)",
-                       (email_id, phone, first_name, last_name, image_data))
+        cursor.execute("INSERT INTO profile_form (email_id, phone, first_name, last_name) VALUES (%s, %s, %s, %s)",
+                       (email_id, phone, first_name, last_name))
         connection.commit()
         return jsonify({'message': 'Profile created successfully'}), 201
     except pymysql.MySQLError as e:
@@ -45,7 +42,7 @@ def get_profile():
     connection = get_db_connection()
     cursor = connection.cursor(pymysql.cursors.DictCursor)
     try:
-        cursor.execute("SELECT email_id, phone, first_name, last_name, HEX(image) AS image FROM profile_form WHERE email_id = %s", (email_id,))
+        cursor.execute("SELECT email_id, phone, first_name, last_name FROM profile_form WHERE email_id = %s", (email_id,))
         profile = cursor.fetchone()
         if profile is None:
             return jsonify({'message': 'Profile not found'}), 404
@@ -63,9 +60,8 @@ def update_profile():
     phone = data.get('phone')
     first_name = data.get('first_name')
     last_name = data.get('last_name')
-    image = request.files.get('image')
 
-    if not email_id or (not phone and not first_name and not last_name and not image):
+    if not email_id or (not phone and not first_name and not last_name):
         return jsonify({'error': 'Invalid input'}), 400
 
     connection = get_db_connection()
@@ -77,9 +73,6 @@ def update_profile():
             cursor.execute("UPDATE profile_form SET first_name = %s WHERE email_id = %s", (first_name, email_id))
         if last_name:
             cursor.execute("UPDATE profile_form SET last_name = %s WHERE email_id = %s", (last_name, email_id))
-        if image:
-            image_data = image.read()
-            cursor.execute("UPDATE profile_form SET image = %s WHERE email_id = %s", (image_data, email_id))
         connection.commit()
         if cursor.rowcount == 0:
             return jsonify({'message': 'Profile not found'}), 404
@@ -112,3 +105,5 @@ def delete_profile():
         cursor.close()
         connection.close()
 
+if __name__ == '__main__':
+    app.run(debug=True)

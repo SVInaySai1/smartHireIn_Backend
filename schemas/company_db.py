@@ -1,5 +1,4 @@
 from database_connection import get_db_connection
-
 def initialize_database_company():
     connection = get_db_connection()
     cursor = connection.cursor()
@@ -12,7 +11,8 @@ def initialize_database_company():
             company_name VARCHAR(255) NOT NULL UNIQUE,
             website_url VARCHAR(255) NOT NULL,
             phone_no VARCHAR(15) NOT NULL,
-            industry_name VARCHAR(255) NOT NULL
+            industry_name VARCHAR(255) NOT NULL,
+            image VARCHAR(255)  # Store the path to the image
         )
         """)
         connection.commit()

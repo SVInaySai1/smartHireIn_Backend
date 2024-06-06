@@ -11,7 +11,8 @@ def initialize_database_registration():
             id INT AUTO_INCREMENT PRIMARY KEY,
             first_name VARCHAR(255) NOT NULL,
             last_name VARCHAR(255) NOT NULL,
-            mobile_number VARCHAR(20) NOT NULL,
+            country_code VARCHAR(5) NOT NULL,
+            mobile_number VARCHAR(15) NOT NULL,
             useremail VARCHAR(255) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             gender VARCHAR(10) NOT NULL
