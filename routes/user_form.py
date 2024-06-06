@@ -1,10 +1,11 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import sys
+import os
 from flask import Flask, request, jsonify
-from database_connection import get_db_connection
-import pymysql
+from database_connection import get_postgresql_connection
+import psycopg2
 
 app = Flask(__name__)
 
@@ -20,14 +21,14 @@ def create_user():
     if not user_name or not department or not gender or not admin_access or not role:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("INSERT INTO user_form (user_name, department, gender, admin_access, role) VALUES (%s, %s, %s, %s, %s)", 
                        (user_name, department, gender, admin_access, role))
         connection.commit()
         return jsonify({'message': 'User created successfully'}), 201
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -40,15 +41,15 @@ def get_user():
     if not user_name:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
+    connection = get_postgresql_connection()
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
         cursor.execute("SELECT * FROM user_form WHERE user_name = %s", (user_name,))
         user = cursor.fetchone()
         if user is None:
             return jsonify({'message': 'User not found'}), 404
         return jsonify(user), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -66,7 +67,7 @@ def update_user():
     if not user_name or (not department and not gender and not admin_access and not role):
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         if department:
@@ -81,7 +82,7 @@ def update_user():
         if cursor.rowcount == 0:
             return jsonify({'message': 'User not found'}), 404
         return jsonify({'message': 'User updated successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -95,7 +96,7 @@ def delete_user():
     if not user_name:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("DELETE FROM user_form WHERE user_name = %s", (user_name,))
@@ -103,8 +104,11 @@ def delete_user():
         if cursor.rowcount == 0:
             return jsonify({'message': 'User not found'}), 404
         return jsonify({'message': 'User deleted successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
         connection.close()
+
+if __name__ == '__main__':
+    app.run(debug=True)

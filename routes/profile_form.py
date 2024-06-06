@@ -3,8 +3,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from flask import Flask, request, jsonify
-from database_connection import get_db_connection
-import pymysql
+from database_connection import get_postgresql_connection
+import psycopg2
 
 app = Flask(__name__)
 
@@ -19,14 +19,14 @@ def create_profile():
     if not email_id or not phone or not first_name or not last_name:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("INSERT INTO profile_form (email_id, phone, first_name, last_name) VALUES (%s, %s, %s, %s)",
                        (email_id, phone, first_name, last_name))
         connection.commit()
         return jsonify({'message': 'Profile created successfully'}), 201
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -39,15 +39,15 @@ def get_profile():
     if not email_id:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
+    connection = get_postgresql_connection()
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
         cursor.execute("SELECT email_id, phone, first_name, last_name FROM profile_form WHERE email_id = %s", (email_id,))
         profile = cursor.fetchone()
         if profile is None:
             return jsonify({'message': 'Profile not found'}), 404
         return jsonify(profile), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -64,7 +64,7 @@ def update_profile():
     if not email_id or (not phone and not first_name and not last_name):
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         if phone:
@@ -77,7 +77,7 @@ def update_profile():
         if cursor.rowcount == 0:
             return jsonify({'message': 'Profile not found'}), 404
         return jsonify({'message': 'Profile updated successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -91,7 +91,7 @@ def delete_profile():
     if not email_id:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("DELETE FROM profile_form WHERE email_id = %s", (email_id,))
@@ -99,7 +99,7 @@ def delete_profile():
         if cursor.rowcount == 0:
             return jsonify({'message': 'Profile not found'}), 404
         return jsonify({'message': 'Profile deleted successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()

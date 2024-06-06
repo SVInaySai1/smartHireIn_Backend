@@ -1,8 +1,8 @@
 from flask import request, jsonify
 import re
-import pymysql
+import psycopg2
 from werkzeug.security import check_password_hash
-from database_connection import get_db_connection
+from database_connection import get_postgresql_connection
 
 def login():
     data = request.json
@@ -15,8 +15,8 @@ def login():
     if not re.match(r'^\S+@\S+\.\S+$', useremail):
         return jsonify({'error': 'Invalid email format'}), 400
     
-    connection = get_db_connection()
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
+    connection = get_postgresql_connection()
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
         cursor.execute("SELECT * FROM registration_form WHERE useremail = %s", (useremail,))
         user = cursor.fetchone()
@@ -27,7 +27,7 @@ def login():
             return jsonify({'error': 'Incorrect password'}), 401
         
         return jsonify({'message': 'Login successful'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()

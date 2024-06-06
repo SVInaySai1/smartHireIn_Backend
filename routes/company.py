@@ -1,9 +1,12 @@
 import os
 import re
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
-from database_connection import get_db_connection
-import pymysql
+from database_connection import get_postgresql_connection
+import psycopg2
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'images'
@@ -37,14 +40,14 @@ def create_company():
 
     image_path = save_image(image)
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("INSERT INTO company (company_name, website_url, phone_no, industry_name, image) VALUES (%s, %s, %s, %s, %s)", 
                        (company_name, website_url, phone_no, industry_name, image_path))
         connection.commit()
         return jsonify({'message': 'Company created successfully'}), 201
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -57,16 +60,16 @@ def get_company():
     if not company_name:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
+    connection = get_postgresql_connection()
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
         cursor.execute("SELECT * FROM company WHERE company_name = %s", (company_name,))
         company = cursor.fetchone()
         if company is None:
             return jsonify({'message': 'Company not found'}), 404
         
-        return jsonify(company), 200
-    except pymysql.MySQLError as e:
+        return jsonify(dict(company)), 200
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -87,7 +90,7 @@ def update_company():
     if phone_no and not is_valid_phone(phone_no):
         return jsonify({'error': 'Invalid phone number'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         if website_url:
@@ -103,7 +106,7 @@ def update_company():
         if cursor.rowcount == 0:
             return jsonify({'message': 'Company not found'}), 404
         return jsonify({'message': 'Company updated successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -117,7 +120,7 @@ def delete_company():
     if not company_name:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("DELETE FROM company WHERE company_name = %s", (company_name,))
@@ -125,7 +128,7 @@ def delete_company():
         if cursor.rowcount == 0:
             return jsonify({'message': 'Company not found'}), 404
         return jsonify({'message': 'Company deleted successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()

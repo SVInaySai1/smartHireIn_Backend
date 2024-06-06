@@ -1,22 +1,34 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import re
 from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash
 import psycopg2
 from psycopg2 import sql
-
-from schemas.registration_form_db import initialize_database_registration
+from psycopg2.extras import DictCursor
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from database_connection import get_postgresql_connection
 
 app = Flask(__name__)
 
 def is_valid_mobile(mobile_number):
     return re.match(r'^[6-9]\d{9}$', mobile_number) is not None
+
+def is_strong_password(password):
+    # At least 8 characters long
+    if len(password) < 8:
+        return False
+
+    # A combination of uppercase letters, lowercase letters, numbers, and symbols
+    if not re.search(r'[A-Z]', password) or \
+       not re.search(r'[a-z]', password) or \
+       not re.search(r'\d', password) or \
+       not re.search(r'[!@#$%^&*()-_+=]', password):
+        return False
+
+    return True
 
 @app.route('/create_user', methods=['POST'])
 def create_user():
@@ -39,6 +51,9 @@ def create_user():
     if not is_valid_mobile(mobile_number):
         return jsonify({'error': 'Mobile number must be a valid 10-digit Indian number starting with 6-9'}), 400
 
+    if not is_strong_password(password):
+        return jsonify({'error': 'Password must be at least 8 characters long and contain a combination of uppercase letters, lowercase letters, numbers, and symbols'}), 400
+
     full_mobile_number = f"{country_code}{mobile_number}"
     hashed_password = generate_password_hash(password)
 
@@ -56,6 +71,8 @@ def create_user():
     finally:
         cursor.close()
         connection.close()
+
+# Other routes remain unchanged
 
 @app.route('/get_user', methods=['GET'])
 def get_user():
@@ -136,7 +153,3 @@ def delete_user():
     finally:
         cursor.close()
         connection.close()
-
-# if __name__ == "__main__":
-#     initialize_database_registration()
-#     app.run(debug=True)

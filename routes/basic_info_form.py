@@ -3,8 +3,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from flask import Flask, request, jsonify
-from database_connection import get_db_connection
-import pymysql
+from database_connection import get_postgresql_connection
+import psycopg2
 
 app = Flask(__name__)
 
@@ -26,13 +26,16 @@ def create_basic_info():
     )
 
     try:
-        with get_db_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(query, params)
-                connection.commit()
-                return jsonify({'message': 'Basic info created successfully'}), 201
-    except pymysql.MySQLError as e:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor()
+        cursor.execute(query, params)
+        connection.commit()
+        return jsonify({'message': 'Basic info created successfully'}), 201
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
 
 def get_basic_info():
     job_position = request.args.get('job_position')
@@ -42,15 +45,18 @@ def get_basic_info():
 
     query = "SELECT * FROM basic_info_form WHERE job_position = %s"
     try:
-        with get_db_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(query, (job_position,))
-                basic_info = cursor.fetchone()
-                if basic_info is None:
-                    return jsonify({'message': 'Basic info not found'}), 404
-                return jsonify(basic_info), 200
-    except pymysql.MySQLError as e:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor()
+        cursor.execute(query, (job_position,))
+        basic_info = cursor.fetchone()
+        if basic_info is None:
+            return jsonify({'message': 'Basic info not found'}), 404
+        return jsonify(basic_info), 200
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
 
 def update_basic_info():
     data = request.json
@@ -82,15 +88,18 @@ def update_basic_info():
     update_params.append(job_position)
 
     try:
-        with get_db_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(update_query, tuple(update_params))
-                connection.commit()
-                if cursor.rowcount == 0:
-                    return jsonify({'message': 'Basic info not found'}), 404
-                return jsonify({'message': 'Basic info updated successfully'}), 200
-    except pymysql.MySQLError as e:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor()
+        cursor.execute(update_query, tuple(update_params))
+        connection.commit()
+        if cursor.rowcount == 0:
+            return jsonify({'message': 'Basic info not found'}), 404
+        return jsonify({'message': 'Basic info updated successfully'}), 200
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
 
 def delete_basic_info():
     data = request.json
@@ -102,13 +111,15 @@ def delete_basic_info():
     query = "DELETE FROM basic_info_form WHERE job_position = %s"
 
     try:
-        with get_db_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(query, (job_position,))
-                connection.commit()
-                if cursor.rowcount == 0:
-                    return jsonify({'message': 'Basic info not found'}), 404
-                return jsonify({'message': 'Basic info deleted successfully'}), 200
-    except pymysql.MySQLError as e:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor()
+        cursor.execute(query, (job_position,))
+        connection.commit()
+        if cursor.rowcount == 0:
+            return jsonify({'message': 'Basic info not found'}), 404
+        return jsonify({'message': 'Basic info deleted successfully'}), 200
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
-
+    finally:
+        cursor.close()
+        connection.close()

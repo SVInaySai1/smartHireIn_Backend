@@ -3,8 +3,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from flask import Flask, request, jsonify
-from database_connection import get_db_connection
-import pymysql
+from database_connection import get_postgresql_connection
+import psycopg2
 
 app = Flask(__name__)
 
@@ -19,14 +19,14 @@ def create_team():
     if not team_name or not team_head or not no_of_members or not name_of_member:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("INSERT INTO team_form (team_name, team_head, no_of_members, name_of_member) VALUES (%s, %s, %s, %s)", 
                        (team_name, team_head, no_of_members, name_of_member))
         connection.commit()
         return jsonify({'message': 'Team created successfully'}), 201
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -39,15 +39,15 @@ def get_team():
     if not team_name:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
+    connection = get_postgresql_connection()
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
         cursor.execute("SELECT * FROM team_form WHERE team_name = %s", (team_name,))
         team = cursor.fetchone()
         if team is None:
             return jsonify({'message': 'Team not found'}), 404
         return jsonify(team), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -64,7 +64,7 @@ def update_team():
     if not team_name or (not team_head and not no_of_members and not name_of_member):
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         if team_head:
@@ -77,7 +77,7 @@ def update_team():
         if cursor.rowcount == 0:
             return jsonify({'message': 'Team not found'}), 404
         return jsonify({'message': 'Team updated successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -91,7 +91,7 @@ def delete_team():
     if not team_name:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("DELETE FROM team_form WHERE team_name = %s", (team_name,))
@@ -99,8 +99,11 @@ def delete_team():
         if cursor.rowcount == 0:
             return jsonify({'message': 'Team not found'}), 404
         return jsonify({'message': 'Team deleted successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
         connection.close()
+
+if __name__ == '__main__':
+    app.run(debug=True)

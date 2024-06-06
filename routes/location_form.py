@@ -3,8 +3,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from flask import Flask, request, jsonify
-from database_connection import get_db_connection
-import pymysql
+from database_connection import get_postgresql_connection
+import psycopg2
 
 app = Flask(__name__)
 
@@ -21,14 +21,14 @@ def create_location():
     if not location_name or not city or not state or not zip_code or not time_zone or not country:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("INSERT INTO location_form (location_name, city, state, zip_code, time_zone, country) VALUES (%s, %s, %s, %s, %s, %s)", 
                        (location_name, city, state, zip_code, time_zone, country))
         connection.commit()
         return jsonify({'message': 'Location created successfully'}), 201
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -41,15 +41,15 @@ def get_location():
     if not location_name:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
+    connection = get_postgresql_connection()
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
         cursor.execute("SELECT * FROM location_form WHERE location_name = %s", (location_name,))
         location = cursor.fetchone()
         if location is None:
             return jsonify({'message': 'Location not found'}), 404
         return jsonify(location), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -68,7 +68,7 @@ def update_location():
     if not location_name or (not city and not state and not zip_code and not time_zone and not country):
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         if city:
@@ -85,7 +85,7 @@ def update_location():
         if cursor.rowcount == 0:
             return jsonify({'message': 'Location not found'}), 404
         return jsonify({'message': 'Location updated successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -99,7 +99,7 @@ def delete_location():
     if not location_name:
         return jsonify({'error': 'Invalid input'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("DELETE FROM location_form WHERE location_name = %s", (location_name,))
@@ -107,7 +107,7 @@ def delete_location():
         if cursor.rowcount == 0:
             return jsonify({'message': 'Location not found'}), 404
         return jsonify({'message': 'Location deleted successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
