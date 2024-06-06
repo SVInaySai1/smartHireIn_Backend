@@ -1,18 +1,24 @@
 import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import re
 from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash
-import pymysql
+import psycopg2
+from psycopg2 import sql
+
+from schemas.registration_form_db import initialize_database_registration
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from database_connection import get_db_connection
+from database_connection import get_postgresql_connection
 
 app = Flask(__name__)
 
 def is_valid_mobile(mobile_number):
-    return re.match(r'^[6-9]\d{9}$', mobile_number) is not None 
+    return re.match(r'^[6-9]\d{9}$', mobile_number) is not None
 
+@app.route('/create_user', methods=['POST'])
 def create_user():
     data = request.json
     first_name = data.get('first_name')
@@ -23,10 +29,10 @@ def create_user():
     password = data.get('password')
     re_enter_password = data.get('re_enter_password')
     gender = data.get('gender')
-    
+
     if not all([first_name, last_name, country_code, mobile_number, useremail, password, re_enter_password, gender]):
         return jsonify({'error': 'All fields are required'}), 400
-    
+
     if password != re_enter_password:
         return jsonify({'error': 'Passwords do not match'}), 400
 
@@ -36,7 +42,7 @@ def create_user():
     full_mobile_number = f"{country_code}{mobile_number}"
     hashed_password = generate_password_hash(password)
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("""
@@ -45,32 +51,34 @@ def create_user():
         """, (first_name, last_name, country_code, full_mobile_number, useremail, hashed_password, gender))
         connection.commit()
         return jsonify({'message': 'User created successfully'}), 201
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
         connection.close()
 
+@app.route('/get_user', methods=['GET'])
 def get_user():
     useremail = request.args.get('useremail')
-    
+
     if not useremail:
         return jsonify({'error': 'User email is required'}), 400
 
-    connection = get_db_connection()
-    cursor = connection.cursor(pymysql.cursors.DictCursor)
+    connection = get_postgresql_connection()
+    cursor = connection.cursor(cursor_factory=DictCursor)
     try:
         cursor.execute("SELECT * FROM registration_form WHERE useremail = %s", (useremail,))
         user = cursor.fetchone()
         if user is None:
             return jsonify({'message': 'User not found'}), 404
         return jsonify(user), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
         connection.close()
 
+@app.route('/update_user', methods=['PUT'])
 def update_user():
     data = request.json
     useremail = data.get('useremail')
@@ -92,29 +100,30 @@ def update_user():
     set_clause = ", ".join(f"{field} = %s" for field in update_data.keys())
     params = list(update_data.values()) + [useremail]
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
-        sql = f"UPDATE registration_form SET {set_clause} WHERE useremail = %s"
-        cursor.execute(sql, params)
+        sql_query = sql.SQL("UPDATE registration_form SET {} WHERE useremail = %s").format(sql.SQL(set_clause))
+        cursor.execute(sql_query, params)
         connection.commit()
         if cursor.rowcount == 0:
             return jsonify({'message': 'User not found'}), 404
         return jsonify({'message': 'User updated successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
         connection.close()
 
+@app.route('/delete_user', methods=['DELETE'])
 def delete_user():
     data = request.json
     useremail = data.get('useremail')
-    
+
     if not useremail:
         return jsonify({'error': 'User email is required'}), 400
 
-    connection = get_db_connection()
+    connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("DELETE FROM registration_form WHERE useremail = %s", (useremail,))
@@ -122,8 +131,12 @@ def delete_user():
         if cursor.rowcount == 0:
             return jsonify({'message': 'User not found'}), 404
         return jsonify({'message': 'User deleted successfully'}), 200
-    except pymysql.MySQLError as e:
+    except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
         connection.close()
+
+# if __name__ == "__main__":
+#     initialize_database_registration()
+#     app.run(debug=True)

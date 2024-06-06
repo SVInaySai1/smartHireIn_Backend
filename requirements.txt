@@ -3,3 +3,4 @@ PyMySQL
 Flask-Cors
 gunicorn
 msal
+psycopg2-binary
