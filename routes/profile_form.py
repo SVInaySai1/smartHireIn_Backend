@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 @app.route('/create_profile', methods=['POST'])
 def create_profile():
-    data = request.form
+    data = request.json  # Change to request.json
     email_id = data.get('email_id')
     phone = data.get('phone')
     first_name = data.get('first_name')
@@ -46,7 +46,7 @@ def get_profile():
         profile = cursor.fetchone()
         if profile is None:
             return jsonify({'message': 'Profile not found'}), 404
-        return jsonify(profile), 200
+        return jsonify(dict(profile)), 200  # Convert to dict for JSON response
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -55,7 +55,7 @@ def get_profile():
 
 @app.route('/update_profile', methods=['PUT'])
 def update_profile():
-    data = request.form
+    data = request.json  # Change to request.json
     email_id = data.get('email_id')
     phone = data.get('phone')
     first_name = data.get('first_name')
