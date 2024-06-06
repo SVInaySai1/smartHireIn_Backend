@@ -1,5 +1,10 @@
 Flask
 PyMySQL
 Flask-Cors
+<<<<<<< HEAD
 Flask-SQLAlchemy
 psycopg2-binary
+=======
+gunicorn
+msal
+>>>>>>> 4fab66575793815e766d4e8c7fc27b7229b7e829
