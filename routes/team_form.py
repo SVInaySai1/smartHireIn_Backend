@@ -14,16 +14,22 @@ def create_team():
     team_name = data.get('team_name')
     team_head = data.get('team_head')
     no_of_members = data.get('no_of_members')
-    name_of_member = data.get('name_of_member')
-
-    if not team_name or not team_head or not no_of_members or not name_of_member:
-        return jsonify({'error': 'Invalid input'}), 400
+    name_of_members = data.get('name_of_members')  # Corrected variable name
+    
+    if not team_head:
+        return jsonify({'error': 'Missing team_head'}), 400
+    elif not team_name:
+        return jsonify({'error': 'Missing team_name'}), 400
+    elif not no_of_members:
+        return jsonify({'error': 'Missing no_of_members'}), 400
+    elif not name_of_members:
+        return jsonify({'error': 'Missing name_of_members'}), 400
 
     connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
-        cursor.execute("INSERT INTO team_form (team_name, team_head, no_of_members, name_of_member) VALUES (%s, %s, %s, %s)",
-                       (team_name, team_head, no_of_members, name_of_member))
+        cursor.execute("INSERT INTO team_form (team_name, team_head, no_of_members, name_of_members) VALUES (%s, %s, %s, %s)",
+                       (team_name, team_head, no_of_members, name_of_members))
         connection.commit()
         return jsonify({'message': 'Team created successfully'}), 201
     except psycopg2.Error as e:
@@ -61,9 +67,9 @@ def update_team():
     team_name = data.get('team_name')
     team_head = data.get('team_head')
     no_of_members = data.get('no_of_members')
-    name_of_member = data.get('name_of_member')
+    name_of_members = data.get('name_of_members')
 
-    if not team_name or (not team_head and not no_of_members and not name_of_member):
+    if not team_name or (not team_head and not no_of_members and not name_of_members):
         return jsonify({'error': 'Invalid input'}), 400
 
     connection = get_postgresql_connection()
@@ -77,9 +83,9 @@ def update_team():
         if no_of_members:
             update_statements.append("no_of_members = %s")
             params.append(no_of_members)
-        if name_of_member:
-            update_statements.append("name_of_member = %s")
-            params.append(name_of_member)
+        if name_of_members:
+            update_statements.append("name_of_members = %s")
+            params.append(name_of_members)
 
         if update_statements:
             update_clause = ", ".join(update_statements)
@@ -119,6 +125,3 @@ def delete_team():
     finally:
         cursor.close()
         connection.close()
-
-if __name__ == '__main__':
-    app.run(debug=True)

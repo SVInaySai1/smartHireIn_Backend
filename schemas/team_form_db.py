@@ -6,11 +6,11 @@ def initialize_database_team():
     try:
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS team_form (
-            id SERIAL PRIMARY KEY,
-            team_name VARCHAR(255) NOT NULL UNIQUE,
+            id SERIAL,
+            team_name VARCHAR(255) NOT NULL,
+            no_of_members INTEGER NOT NULL,
             team_head VARCHAR(255) NOT NULL,
-            no_of_members INT NOT NULL,
-            name_of_member TEXT[] NOT NULL
+            name_of_members TEXT NOT NULL
         )
         """)
         connection.commit()
