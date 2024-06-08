@@ -15,18 +15,19 @@ def create_team():
     team_head = data.get('team_head')
     no_of_members = data.get('no_of_members')
     name_of_member = data.get('name_of_member')
-    
+
     if not team_name or not team_head or not no_of_members or not name_of_member:
         return jsonify({'error': 'Invalid input'}), 400
 
     connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
-        cursor.execute("INSERT INTO team_form (team_name, team_head, no_of_members, name_of_member) VALUES (%s, %s, %s, %s)", 
+        cursor.execute("INSERT INTO team_form (team_name, team_head, no_of_members, name_of_member) VALUES (%s, %s, %s, %s)",
                        (team_name, team_head, no_of_members, name_of_member))
         connection.commit()
         return jsonify({'message': 'Team created successfully'}), 201
     except psycopg2.Error as e:
+        print(f"Error: {e}")  # Log the error for debugging
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -35,7 +36,7 @@ def create_team():
 @app.route('/get_team', methods=['GET'])
 def get_team():
     team_name = request.args.get('team_name')
-    
+
     if not team_name:
         return jsonify({'error': 'Invalid input'}), 400
 
@@ -48,6 +49,7 @@ def get_team():
             return jsonify({'message': 'Team not found'}), 404
         return jsonify(team), 200
     except psycopg2.Error as e:
+        print(f"Error: {e}")  # Log the error for debugging
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
@@ -60,23 +62,36 @@ def update_team():
     team_head = data.get('team_head')
     no_of_members = data.get('no_of_members')
     name_of_member = data.get('name_of_member')
-    
+
     if not team_name or (not team_head and not no_of_members and not name_of_member):
         return jsonify({'error': 'Invalid input'}), 400
 
     connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
+        update_statements = []
+        params = []
         if team_head:
-            cursor.execute("UPDATE team_form SET team_head = %s WHERE team_name = %s", (team_head, team_name))
+            update_statements.append("team_head = %s")
+            params.append(team_head)
         if no_of_members:
-            cursor.execute("UPDATE team_form SET no_of_members = %s WHERE team_name = %s", (no_of_members, team_name))
+            update_statements.append("no_of_members = %s")
+            params.append(no_of_members)
         if name_of_member:
-            cursor.execute("UPDATE team_form SET name_of_member = %s WHERE team_name = %s", (name_of_member, team_name))
-        connection.commit()
-        if cursor.rowcount == 0:
-            return jsonify({'message': 'Team not found'}), 404
-        return jsonify({'message': 'Team updated successfully'}), 200
+            update_statements.append("name_of_member = %s")
+            params.append(name_of_member)
+
+        if update_statements:
+            update_clause = ", ".join(update_statements)
+            sql = f"UPDATE team_form SET {update_clause} WHERE team_name = %s"
+            cursor.execute(sql, params + [team_name])
+            connection.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({'message': 'Team not found'}), 404
+            return jsonify({'message': 'Team updated successfully'}), 200
+        else:
+            return jsonify({'message': 'No fields to update'}), 
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:

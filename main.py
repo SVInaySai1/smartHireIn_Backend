@@ -6,6 +6,7 @@ from routes.login import login
 
 from email_otp_generation import send_otp_route, verify_otp_route
 
+from routes.department import create_department, get_departments, update_department, delete_department
 from routes.basic_info_form import create_basic_info, get_basic_info, update_basic_info, delete_basic_info
 from routes.company import create_company, get_company, update_company, delete_company
 from routes.location_form import create_location, get_location, update_location, delete_location
@@ -16,6 +17,13 @@ from routes.team_user_form import create_user as create_team_user, get_user as g
 
 app = Flask(__name__)
 CORS(app)
+
+
+# department info form 
+app.route('/create_department', methods=['POST'], endpoint='create_department')(create_department)
+app.route('/departments', methods=['GET'], endpoint='departments')(get_departments)
+app.route('/update_department', methods=['PUT'], endpoint='update_department')(update_department)
+app.route('/delete_department', methods=['DELETE'], endpoint='delete_department')(delete_department)
 
 # basic info form 
 app.route('/create_basic_info', methods=['POST'], endpoint='create_basic_info')(create_basic_info)

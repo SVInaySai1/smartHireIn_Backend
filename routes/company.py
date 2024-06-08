@@ -3,10 +3,11 @@ import re
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, url_for
 from werkzeug.utils import secure_filename
 from database_connection import get_postgresql_connection
 import psycopg2
+import psycopg2.extras
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'images'
@@ -17,7 +18,7 @@ def save_image(image):
         filename = secure_filename(image.filename)
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         image.save(image_path)
-        return image_path
+        return filename  # Return just the filename
     return None
 
 def is_valid_phone(phone_no):
@@ -38,13 +39,13 @@ def create_company():
     if not is_valid_phone(phone_no):
         return jsonify({'error': 'Invalid phone number'}), 400
 
-    image_path = save_image(image)
+    image_filename = save_image(image)
 
     connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("INSERT INTO company (company_name, website_url, phone_no, industry_name, image) VALUES (%s, %s, %s, %s, %s)", 
-                       (company_name, website_url, phone_no, industry_name, image_path))
+                       (company_name, website_url, phone_no, industry_name, image_filename))
         connection.commit()
         return jsonify({'message': 'Company created successfully'}), 201
     except psycopg2.Error as e:
@@ -68,7 +69,10 @@ def get_company():
         if company is None:
             return jsonify({'message': 'Company not found'}), 404
         
-        return jsonify(dict(company)), 200
+        company_dict = dict(company)
+        if company_dict['image']:
+            company_dict['image_url'] = url_for('uploaded_file', filename=company_dict['image'], _external=True)
+        return jsonify(company_dict), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -100,8 +104,8 @@ def update_company():
         if industry_name:
             cursor.execute("UPDATE company SET industry_name = %s WHERE company_name = %s", (industry_name, company_name))
         if image:
-            image_path = save_image(image)
-            cursor.execute("UPDATE company SET image = %s WHERE company_name = %s", (image_path, company_name))
+            image_filename = save_image(image)
+            cursor.execute("UPDATE company SET image = %s WHERE company_name = %s", (image_filename, company_name))
         connection.commit()
         if cursor.rowcount == 0:
             return jsonify({'message': 'Company not found'}), 404
@@ -133,3 +137,11 @@ def delete_company():
     finally:
         cursor.close()
         connection.close()
+
+# Route to serve the uploaded images
+@app.route('/images/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+if __name__ == '__main__':
+    app.run(debug=True)

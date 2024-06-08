@@ -17,17 +17,13 @@ def is_valid_mobile(mobile_number):
     return re.match(r'^[6-9]\d{9}$', mobile_number) is not None
 
 def is_strong_password(password):
-    # At least 8 characters long
     if len(password) < 8:
         return False
-
-    # A combination of uppercase letters, lowercase letters, numbers, and symbols
     if not re.search(r'[A-Z]', password) or \
        not re.search(r'[a-z]', password) or \
        not re.search(r'\d', password) or \
        not re.search(r'[!@#$%^&*()-_+=]', password):
         return False
-
     return True
 
 @app.route('/create_user', methods=['POST'])
@@ -57,22 +53,17 @@ def create_user():
     full_mobile_number = f"{country_code}{mobile_number}"
     hashed_password = generate_password_hash(password)
 
-    connection = get_postgresql_connection()
-    cursor = connection.cursor()
     try:
-        cursor.execute("""
-            INSERT INTO registration_form (first_name, last_name, country_code, mobile_number, useremail, password, gender) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (first_name, last_name, country_code, full_mobile_number, useremail, hashed_password, gender))
-        connection.commit()
+        with get_postgresql_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO registration_form (first_name, last_name, country_code, mobile_number, useremail, password, gender) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (first_name, last_name, country_code, full_mobile_number, useremail, hashed_password, gender))
+                connection.commit()
         return jsonify({'message': 'User created successfully'}), 201
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        cursor.close()
-        connection.close()
-
-# Other routes remain unchanged
 
 @app.route('/get_user', methods=['GET'])
 def get_user():
@@ -81,19 +72,16 @@ def get_user():
     if not useremail:
         return jsonify({'error': 'User email is required'}), 400
 
-    connection = get_postgresql_connection()
-    cursor = connection.cursor(cursor_factory=DictCursor)
     try:
-        cursor.execute("SELECT * FROM registration_form WHERE useremail = %s", (useremail,))
-        user = cursor.fetchone()
-        if user is None:
-            return jsonify({'message': 'User not found'}), 404
-        return jsonify(user), 200
+        with get_postgresql_connection() as connection:
+            with connection.cursor(cursor_factory=DictCursor) as cursor:
+                cursor.execute("SELECT * FROM registration_form WHERE useremail = %s", (useremail,))
+                user = cursor.fetchone()
+                if user is None:
+                    return jsonify({'message': 'User not found'}), 404
+                return jsonify(dict(user)), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        cursor.close()
-        connection.close()
 
 @app.route('/update_user', methods=['PUT'])
 def update_user():
@@ -117,20 +105,17 @@ def update_user():
     set_clause = ", ".join(f"{field} = %s" for field in update_data.keys())
     params = list(update_data.values()) + [useremail]
 
-    connection = get_postgresql_connection()
-    cursor = connection.cursor()
     try:
-        sql_query = sql.SQL("UPDATE registration_form SET {} WHERE useremail = %s").format(sql.SQL(set_clause))
-        cursor.execute(sql_query, params)
-        connection.commit()
-        if cursor.rowcount == 0:
-            return jsonify({'message': 'User not found'}), 404
-        return jsonify({'message': 'User updated successfully'}), 200
+        with get_postgresql_connection() as connection:
+            with connection.cursor() as cursor:
+                sql_query = sql.SQL("UPDATE registration_form SET {} WHERE useremail = %s").format(sql.SQL(set_clause))
+                cursor.execute(sql_query, params)
+                connection.commit()
+                if cursor.rowcount == 0:
+                    return jsonify({'message': 'User not found'}), 404
+                return jsonify({'message': 'User updated successfully'}), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        cursor.close()
-        connection.close()
 
 @app.route('/delete_user', methods=['DELETE'])
 def delete_user():
@@ -140,16 +125,13 @@ def delete_user():
     if not useremail:
         return jsonify({'error': 'User email is required'}), 400
 
-    connection = get_postgresql_connection()
-    cursor = connection.cursor()
     try:
-        cursor.execute("DELETE FROM registration_form WHERE useremail = %s", (useremail,))
-        connection.commit()
-        if cursor.rowcount == 0:
-            return jsonify({'message': 'User not found'}), 404
-        return jsonify({'message': 'User deleted successfully'}), 200
+        with get_postgresql_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM registration_form WHERE useremail = %s", (useremail,))
+                connection.commit()
+                if cursor.rowcount == 0:
+                    return jsonify({'message': 'User not found'}), 404
+                return jsonify({'message': 'User deleted successfully'}), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        cursor.close()
-        connection.close()

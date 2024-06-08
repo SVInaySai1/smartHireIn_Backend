@@ -1,29 +1,47 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import re
 from flask import Flask, request, jsonify
 from database_connection import get_postgresql_connection
 import psycopg2
+import psycopg2.extras
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 app = Flask(__name__)
 
+# Regular expressions for validation
+email_regex = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
+phone_regex = re.compile(r'^[6-9]\d{9}$')
+
+def is_valid_email(email):
+    return email_regex.match(email) is not None
+
+def is_valid_phone(phone):
+    return phone_regex.match(phone) is not None
+
 @app.route('/create_profile', methods=['POST'])
 def create_profile():
-    data = request.json  # Change to request.json
+    data = request.json
     email_id = data.get('email_id')
     phone = data.get('phone')
     first_name = data.get('first_name')
     last_name = data.get('last_name')
 
     if not email_id or not phone or not first_name or not last_name:
-        return jsonify({'error': 'Invalid input'}), 400
+        return jsonify({'error': 'All fields are required'}), 400
+    if not is_valid_email(email_id):
+        return jsonify({'error': 'Invalid email address'}), 400
+    if not is_valid_phone(phone):
+        return jsonify({'error': 'Invalid phone number'}), 400
 
     connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
-        cursor.execute("INSERT INTO profile_form (email_id, phone, first_name, last_name) VALUES (%s, %s, %s, %s)",
-                       (email_id, phone, first_name, last_name))
+        cursor.execute(
+            "INSERT INTO profile_form (email_id, phone, first_name, last_name) VALUES (%s, %s, %s, %s)",
+            (email_id, phone, first_name, last_name)
+        )
         connection.commit()
         return jsonify({'message': 'Profile created successfully'}), 201
     except psycopg2.Error as e:
@@ -38,15 +56,20 @@ def get_profile():
 
     if not email_id:
         return jsonify({'error': 'Invalid input'}), 400
+    if not is_valid_email(email_id):
+        return jsonify({'error': 'Invalid email address'}), 400
 
     connection = get_postgresql_connection()
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
-        cursor.execute("SELECT email_id, phone, first_name, last_name FROM profile_form WHERE email_id = %s", (email_id,))
+        cursor.execute(
+            "SELECT email_id, phone, first_name, last_name FROM profile_form WHERE email_id = %s",
+            (email_id,)
+        )
         profile = cursor.fetchone()
         if profile is None:
             return jsonify({'message': 'Profile not found'}), 404
-        return jsonify(dict(profile)), 200  # Convert to dict for JSON response
+        return jsonify(dict(profile)), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -55,7 +78,7 @@ def get_profile():
 
 @app.route('/update_profile', methods=['PUT'])
 def update_profile():
-    data = request.json  # Change to request.json
+    data = request.json
     email_id = data.get('email_id')
     phone = data.get('phone')
     first_name = data.get('first_name')
@@ -63,6 +86,10 @@ def update_profile():
 
     if not email_id or (not phone and not first_name and not last_name):
         return jsonify({'error': 'Invalid input'}), 400
+    if not is_valid_email(email_id):
+        return jsonify({'error': 'Invalid email address'}), 400
+    if phone and not is_valid_phone(phone):
+        return jsonify({'error': 'Invalid phone number'}), 400
 
     connection = get_postgresql_connection()
     cursor = connection.cursor()
@@ -90,6 +117,8 @@ def delete_profile():
 
     if not email_id:
         return jsonify({'error': 'Invalid input'}), 400
+    if not is_valid_email(email_id):
+        return jsonify({'error': 'Invalid email address'}), 400
 
     connection = get_postgresql_connection()
     cursor = connection.cursor()

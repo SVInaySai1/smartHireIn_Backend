@@ -18,9 +18,18 @@ def create_location():
     time_zone = data.get('time_zone')
     country = data.get('country')
     
-    if not location_name or not city or not state or not zip_code or not time_zone or not country:
-        return jsonify({'error': 'Invalid input'}), 400
-
+    if not location_name:
+        return jsonify({'error': 'Missing location_name'}), 400
+    if not city:
+        return jsonify({'error': 'Missing city'}), 400
+    if not state:
+        return jsonify({'error': 'Missing state'}), 400
+    if not zip_code:
+        return jsonify({'error': 'Missing zip_code'}), 400
+    if not time_zone:
+        return jsonify({'error': 'Missing time_zone'}), 400
+    if not country:
+        return jsonify({'error': 'Missing country'}), 400
     connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
@@ -34,21 +43,16 @@ def create_location():
         cursor.close()
         connection.close()
 
-@app.route('/get_location', methods=['GET'])
+app.route('/get_location', methods=['GET'])
 def get_location():
-    location_name = request.args.get('location_name')
-    
-    if not location_name:
-        return jsonify({'error': 'Invalid input'}), 400
-
     connection = get_postgresql_connection()
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
-        cursor.execute("SELECT * FROM location_form WHERE location_name = %s", (location_name,))
-        location = cursor.fetchone()
-        if location is None:
-            return jsonify({'message': 'Location not found'}), 404
-        return jsonify(location), 200
+        cursor.execute("SELECT * FROM location_form")
+        locations = cursor.fetchall()
+        if not locations:
+            return jsonify({'message': 'No locations found'}), 404
+        return jsonify({'locations': [dict(location) for location in locations]}), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:

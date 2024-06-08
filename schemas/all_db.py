@@ -5,6 +5,7 @@ from schemas.location_form_db import initialize_database_location
 from schemas.profile_form_db import initialize_database_profile
 from schemas.team_form_db import initialize_database_team
 from schemas.user_form_db import initialize_database_user_form
+from schemas.department_db import initialize_department_table
 
 
 def initialize_database():
@@ -15,3 +16,4 @@ def initialize_database():
     initialize_database_profile()
     initialize_database_team()
     initialize_database_user_form()
+    initialize_department_table()
