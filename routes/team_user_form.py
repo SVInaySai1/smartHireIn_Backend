@@ -9,7 +9,7 @@ import psycopg2
 
 app = Flask(__name__)
 
-@app.route('/create_user', methods=['POST'])
+@app.route('/create_team_user', methods=['POST'])
 def create_user():
     data = request.json
     user_name = data.get('user_name')
@@ -17,17 +17,22 @@ def create_user():
     gender = data.get('gender')
     admin_access = data.get('admin_access')
     role = data.get('role')
-    
-    if not user_name or not department or not gender or not admin_access or not role:
+
+    if not user_name or not department or not gender or not role:
         return jsonify({'error': 'Invalid input'}), 400
+
+    if admin_access not in ["yes", "no"]:
+        return jsonify({'error': 'Invalid input for admin_access'}), 400
+
+    admin_access_bool = True if admin_access == "yes" else False
 
     connection = get_postgresql_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("INSERT INTO user_form (user_name, department, gender, admin_access, role) VALUES (%s, %s, %s, %s, %s)", 
-                       (user_name, department, gender, admin_access, role))
+                       (user_name, department, gender, admin_access_bool, role))
         connection.commit()
-        return jsonify({'message': 'User created successfully'}), 201
+        return jsonify({'message': 'Team user created successfully'}), 201
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -48,7 +53,7 @@ def get_user():
         user = cursor.fetchone()
         if user is None:
             return jsonify({'message': 'User not found'}), 404
-        return jsonify(user), 200
+        return jsonify(dict(user)), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -64,7 +69,7 @@ def update_user():
     admin_access = data.get('admin_access')
     role = data.get('role')
     
-    if not user_name or (not department and not gender and not admin_access and not role):
+    if not user_name or (department is None and gender is None and admin_access is None and role is None):
         return jsonify({'error': 'Invalid input'}), 400
 
     connection = get_postgresql_connection()
@@ -74,8 +79,11 @@ def update_user():
             cursor.execute("UPDATE user_form SET department = %s WHERE user_name = %s", (department, user_name))
         if gender:
             cursor.execute("UPDATE user_form SET gender = %s WHERE user_name = %s", (gender, user_name))
-        if admin_access:
-            cursor.execute("UPDATE user_form SET admin_access = %s WHERE user_name = %s", (admin_access, user_name))
+        if admin_access is not None:
+            if admin_access not in ["yes", "no"]:
+                return jsonify({'error': 'Invalid input for admin_access'}), 400
+            admin_access_bool = True if admin_access == "yes" else False
+            cursor.execute("UPDATE user_form SET admin_access = %s WHERE user_name = %s", (admin_access_bool, user_name))
         if role:
             cursor.execute("UPDATE user_form SET role = %s WHERE user_name = %s", (role, user_name))
         connection.commit()
@@ -110,8 +118,6 @@ def delete_user():
         cursor.close()
         connection.close()
 
-from flask import jsonify
-
 @app.route('/get_all_users', methods=['GET'])
 def get_all_users():
     query = "SELECT * FROM user_form"
@@ -126,7 +132,7 @@ def get_all_users():
                 "user_name": user['user_name'],
                 "department": user['department'],
                 "gender": user['gender'],
-                "admin_access": user['admin_access'],
+                "admin_access": 'yes' if user['admin_access'] else 'no',
                 "role": user['role']
             }
             users_list.append(user_dict)
@@ -153,7 +159,6 @@ def delete_all_users():
     finally:
         cursor.close()
         connection.close()
-
 
 if __name__ == '__main__':
     app.run(debug=True)

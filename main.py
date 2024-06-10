@@ -80,7 +80,7 @@ app.route('/create_team_user', methods=['POST'], endpoint='create_team_user')(cr
 app.route('/get_team_user', methods=['GET'], endpoint='get_team_user')(get_team_user)
 app.route('/update_team_user', methods=['PUT'], endpoint='update_team_user')(update_team_user)
 app.route('/delete_team_user', methods=['DELETE'], endpoint='delete_team_user')(delete_team_user)
-app.route('/get_all_team_users', methods=['DELETE'], endpoint='get_all_team_users')(get_all_team_users)
+app.route('/get_all_team_users', methods=['GET'], endpoint='get_all_team_users')(get_all_team_users)
 app.route('/delete_all_team_user', methods=['DELETE'], endpoint='delete_all_team_user')(delete_all_team_user)
 
 # login 
