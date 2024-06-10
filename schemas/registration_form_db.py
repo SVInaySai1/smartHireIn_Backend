@@ -7,12 +7,12 @@ def initialize_database_registration():
     try:
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS registration_form (
-            id SERIAL,
+            id SERIAL PRIMARY KEY,
             first_name VARCHAR(255) NOT NULL,
             last_name VARCHAR(255) NOT NULL,
             country_code VARCHAR(5) NOT NULL,
             mobile_number VARCHAR(15) NOT NULL,
-            useremail VARCHAR(255) NOT NULL PRIMARY KEY,
+            useremail VARCHAR(255) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             gender VARCHAR(10) NOT NULL
         )
@@ -24,3 +24,7 @@ def initialize_database_registration():
     finally:
         cursor.close()
         connection.close()
+
+# Example usage:
+if __name__ == "__main__":
+    initialize_database_registration()

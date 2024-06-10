@@ -134,5 +134,43 @@ def delete_profile():
         cursor.close()
         connection.close()
 
+@app.route('/get_all_profiles', methods=['GET'])
+def get_all_profiles():
+    try:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute("SELECT * FROM profile_form")
+        profiles = cursor.fetchall()
+        profiles_list = []
+        for profile in profiles:
+            profile_dict = {
+                "email_id": profile['email_id'],
+                "phone": profile['phone'],
+                "first_name": profile['first_name'],
+                "last_name": profile['last_name']
+            }
+            profiles_list.append(profile_dict)
+        return jsonify(profiles_list), 200
+    except psycopg2.Error as e:
+        print(f"Error: {e}")  # Log the error for debugging
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.route('/delete_all_profiles', methods=['DELETE'])
+def delete_all_profiles():
+    try:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM profile_form")
+        connection.commit()
+        return jsonify({'message': 'All profiles deleted successfully'}), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
 if __name__ == '__main__':
     app.run(debug=True)

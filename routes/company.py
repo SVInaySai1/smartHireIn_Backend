@@ -72,6 +72,8 @@ def get_company():
         company_dict = dict(company)
         if company_dict['image']:
             company_dict['image_url'] = url_for('uploaded_file', filename=company_dict['image'], _external=True)
+        else:
+            company_dict['image_url'] = None  # Or any default image URL you want to use
         return jsonify(company_dict), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
@@ -138,10 +140,47 @@ def delete_company():
         cursor.close()
         connection.close()
 
-# Route to serve the uploaded images
 @app.route('/images/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route('/get_all_companies', methods=['GET'])
+def get_all_companies():
+    query = "SELECT id, company_name, website_url, phone_no, industry_name, image FROM company"
+    try:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute(query)
+        companies = cursor.fetchall()
+        companies_list = []
+        for company in companies:
+            company_dict = {
+                "id": company['id'],
+                "company_name": company['company_name'],
+                "website_url": company['website_url'],
+                "phone_no": company['phone_no'],
+                "industry_name": company['industry_name'],
+                "image_path": company['image']  # Only include the image path without building URL
+            }
+            companies_list.append(company_dict)
+        return jsonify(companies_list), 200
+    except psycopg2.Error as e:
+        print(f"Error: {e}")  # Log the error for debugging
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.route('/delete_all_companies', methods=['DELETE'])
+def delete_all_companies():
+    connection = get_postgresql_connection()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("DELETE FROM company")
+        connection.commit()
+        return jsonify({'message': 'All companies deleted successfully'}), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()

@@ -39,27 +39,31 @@ def create_team():
         cursor.close()
         connection.close()
 
-@app.route('/get_team', methods=['GET'])
-def get_team():
-    team_name = request.args.get('team_name')
-
-    if not team_name:
-        return jsonify({'error': 'Invalid input'}), 400
-
+@app.route('/get_teams', methods=['GET'])
+def get_teams():
     connection = get_postgresql_connection()
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
-        cursor.execute("SELECT * FROM team_form WHERE team_name = %s", (team_name,))
-        team = cursor.fetchone()
-        if team is None:
-            return jsonify({'message': 'Team not found'}), 404
-        return jsonify(team), 200
+        cursor.execute("SELECT * FROM team_form")
+        teams = cursor.fetchall()
+        team_list = []
+        for team in teams:
+            team_dict = {
+                "id": team['id'],
+                "team_name": team['team_name'],
+                "team_head": team['team_head'],
+                "no_of_members": team['no_of_members'],
+                "name_of_members": team['name_of_members']
+            }
+            team_list.append(team_dict)
+        return jsonify(team_list), 200
     except psycopg2.Error as e:
         print(f"Error: {e}")  # Log the error for debugging
         return jsonify({'error': str(e)}), 500
     finally:
         cursor.close()
         connection.close()
+
 
 @app.route('/update_team', methods=['PUT'])
 def update_team():
@@ -125,3 +129,37 @@ def delete_team():
     finally:
         cursor.close()
         connection.close()
+
+@app.route('/get_team_by_name', methods=['GET'])
+def get_team_by_name():
+    team_name = request.args.get('team_name')
+
+    if not team_name:
+        return jsonify({'error': 'Team name is required'}), 400
+
+    connection = get_postgresql_connection()
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    try:
+        cursor.execute("SELECT * FROM team_form WHERE team_name = %s", (team_name,))
+        team = cursor.fetchone()
+        if team is None:
+            return jsonify({'message': 'Team not found'}), 404
+        return jsonify(dict(team)), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.route('/delete_all_teams', methods=['DELETE'])
+def delete_all_teams():
+    try:
+        with get_postgresql_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM team_form")
+                connection.commit()
+                if cursor.rowcount == 0:
+                    return jsonify({'message': 'No teams found to delete'}), 404
+                return jsonify({'message': 'All teams deleted successfully'}), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500

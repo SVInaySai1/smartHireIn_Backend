@@ -136,3 +136,43 @@ def delete_user():
                 return jsonify({'message': 'User deleted successfully'}), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
+    
+
+def get_all_users():
+    query = "SELECT * FROM registration_form"
+    try:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute(query)
+        users = cursor.fetchall()
+        if not users:
+            return jsonify({'message': 'No users found'}), 404
+        users_list = []
+        for user in users:
+            user_dict = {
+                "first_name": user['first_name'],
+                "last_name": user['last_name'],
+                "country_code": user['country_code'],
+                "mobile_number": user['mobile_number'],
+                "useremail": user['useremail'],
+                "gender": user['gender']
+            }
+            users_list.append(user_dict)
+        return jsonify(users_list), 200
+    except psycopg2.Error as e:
+        print(f"Error: {e}")  # Log the error for debugging
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def delete_all_users():
+    try:
+        with get_postgresql_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM registration_form")
+                connection.commit()
+                return jsonify({'message': 'All users deleted successfully'}), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500

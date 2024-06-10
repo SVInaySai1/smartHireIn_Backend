@@ -6,7 +6,7 @@ def initialize_department_table():
             with connection.cursor() as cursor:
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS department (
-                        id SERIAL ,
+                        id SERIAL PRIMARY KEY,
                         department_name VARCHAR(255) UNIQUE NOT NULL,
                         created_by VARCHAR(255) NOT NULL,
                         last_modified VARCHAR(10) NOT NULL

@@ -1,10 +1,10 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from flask import Flask, request, jsonify
 from database_connection import get_postgresql_connection
 import psycopg2
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 app = Flask(__name__)
 
@@ -43,16 +43,21 @@ def create_location():
         cursor.close()
         connection.close()
 
-app.route('/get_location', methods=['GET'])
+@app.route('/get_location', methods=['GET'])
 def get_location():
+    location_name = request.args.get('location_name')
+    
+    if not location_name:
+        return jsonify({'error': 'Missing location_name parameter'}), 400
+
     connection = get_postgresql_connection()
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
-        cursor.execute("SELECT * FROM location_form")
-        locations = cursor.fetchall()
-        if not locations:
-            return jsonify({'message': 'No locations found'}), 404
-        return jsonify({'locations': [dict(location) for location in locations]}), 200
+        cursor.execute("SELECT * FROM location_form WHERE location_name = %s", (location_name,))
+        location = cursor.fetchone()
+        if location is None:
+            return jsonify({'message': 'Location not found'}), 404
+        return jsonify(dict(location)), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -116,3 +121,47 @@ def delete_location():
     finally:
         cursor.close()
         connection.close()
+
+@app.route('/get_all_locations', methods=['GET'])
+def get_all_locations():
+    try:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute("SELECT * FROM location_form")
+        locations = cursor.fetchall()
+        locations_list = []
+        for location in locations:
+            location_dict = {
+                "id": location['id'],
+                "location_name": location['location_name'],
+                "city": location['city'],
+                "state": location['state'],
+                "zip_code": location['zip_code'],
+                "time_zone": location["time_zone"],
+                "country": location["country"]
+            }
+            locations_list.append(location_dict)
+        return jsonify(locations_list), 200
+    except psycopg2.Error as e:
+        print(f"Error: {e}")  # Log the error for debugging
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.route('/delete_all_locations', methods=['DELETE'])
+def delete_all_locations():
+    try:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM location_form")
+        connection.commit()
+        return jsonify({'message': 'All locations deleted successfully'}), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+if __name__ == '__main__':
+    app.run(debug=True)

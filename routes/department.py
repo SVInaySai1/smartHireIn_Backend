@@ -64,17 +64,30 @@ def update_department():
                 return jsonify({'message': 'Department updated successfully'}), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
-    
+
 @app.route('/departments', methods=['GET'])
-def get_departments():
+def get_all_departments():
+    query = "SELECT * FROM department"
     try:
-        with get_postgresql_connection() as connection:
-            with connection.cursor(cursor_factory=DictCursor) as cursor:
-                cursor.execute("SELECT * FROM department")
-                departments = cursor.fetchall()
-                return jsonify({'departments': [dict(dep) for dep in departments]}), 200
+        connection = get_postgresql_connection()
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute(query)
+        departments = cursor.fetchall()
+        departments_list = []
+        for department in departments:
+            department_dict = {
+                "id": department['id'],
+                "department_name": department['department_name'],
+                "created_by": department['created_by']
+            }
+            departments_list.append(department_dict)
+        return jsonify({'departments': departments_list}), 200
     except psycopg2.Error as e:
+        print(f"Error: {e}")  # Log the error for debugging
         return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
 
 
 @app.route('/delete_department', methods=['DELETE'])
@@ -95,3 +108,35 @@ def delete_department():
                 return jsonify({'message': 'Department deleted successfully'}), 200
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/get_department', methods=['GET'])
+def get_department():
+    department_name = request.args.get('department_name')
+
+    if not department_name:
+        return jsonify({'error': 'Department name is required'}), 400
+
+    try:
+        with get_postgresql_connection() as connection:
+            with connection.cursor(cursor_factory=DictCursor) as cursor:
+                cursor.execute("SELECT * FROM department WHERE department_name = %s", (department_name,))
+                department = cursor.fetchone()
+                if department is None:
+                    return jsonify({'message': 'Department not found'}), 404
+                return jsonify(dict(department)), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/delete_all_departments', methods=['DELETE'])
+def delete_all_departments():
+    try:
+        with get_postgresql_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM department")
+                connection.commit()
+                return jsonify({'message': 'All departments deleted successfully'}), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)

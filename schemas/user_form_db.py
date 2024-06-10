@@ -7,7 +7,7 @@ def initialize_database_user_form():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_form (
             id SERIAL PRIMARY KEY,
-            user_name VARCHAR(255) NOT NULL,
+            user_name VARCHAR(255) NOT NULL UNIQUE,
             department VARCHAR(255) NOT NULL,
             gender VARCHAR(50) NOT NULL,
             admin_access BOOLEAN NOT NULL,

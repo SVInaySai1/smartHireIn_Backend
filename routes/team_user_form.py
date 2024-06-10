@@ -110,5 +110,50 @@ def delete_user():
         cursor.close()
         connection.close()
 
+from flask import jsonify
+
+@app.route('/get_all_users', methods=['GET'])
+def get_all_users():
+    query = "SELECT * FROM user_form"
+    try:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute(query)
+        users = cursor.fetchall()
+        users_list = []
+        for user in users:
+            user_dict = {
+                "user_name": user['user_name'],
+                "department": user['department'],
+                "gender": user['gender'],
+                "admin_access": user['admin_access'],
+                "role": user['role']
+            }
+            users_list.append(user_dict)
+        return jsonify(users_list), 200
+    except psycopg2.Error as e:
+        print(f"Error: {e}")  # Log the error for debugging
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.route('/delete_all_users', methods=['DELETE'])
+def delete_all_users():
+    try:
+        connection = get_postgresql_connection()
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM user_form")
+        connection.commit()
+        if cursor.rowcount == 0:
+            return jsonify({'message': 'No users found to delete'}), 404
+        return jsonify({'message': 'All users deleted successfully'}), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+
 if __name__ == '__main__':
     app.run(debug=True)
