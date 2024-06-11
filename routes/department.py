@@ -42,10 +42,10 @@ def create_department():
 def update_department():
     data = request.json
     department_name = data.get('department_name')
-    updated_by = data.get('updated_by')
+    created_by = data.get('created_by')
 
-    if not department_name:
-        return jsonify({'error': 'Department name is required'}), 400
+    if not all([department_name, created_by]):
+        return jsonify({'error': 'Department name and created by fields are required'}), 400
 
     if not is_valid_department_name(department_name):
         return jsonify({'error': 'Department name can only contain letters and spaces'}), 400
@@ -55,9 +55,9 @@ def update_department():
             with connection.cursor() as cursor:
                 cursor.execute("""
                     UPDATE department 
-                    SET updated_by = %s, last_modified = %s
+                    SET created_by = %s, last_modified = %s
                     WHERE department_name = %s
-                """, (updated_by, datetime.now().strftime('%d/%m/%Y'), department_name))
+                """, (created_by, datetime.now().strftime('%d/%m/%Y'), department_name))
                 connection.commit()
                 if cursor.rowcount == 0:
                     return jsonify({'message': 'Department not found'}), 404
@@ -78,7 +78,8 @@ def get_all_departments():
             department_dict = {
                 "id": department['id'],
                 "department_name": department['department_name'],
-                "created_by": department['created_by']
+                "created_by": department['created_by'],
+                "last_modified": department['last_modified']
             }
             departments_list.append(department_dict)
         return jsonify({'departments': departments_list}), 200
@@ -88,7 +89,6 @@ def get_all_departments():
     finally:
         cursor.close()
         connection.close()
-
 
 @app.route('/delete_department', methods=['DELETE'])
 def delete_department():
