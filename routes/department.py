@@ -138,5 +138,33 @@ def delete_all_departments():
     except psycopg2.Error as e:
         return jsonify({'error': str(e)}), 500
 
+# New route for changing department name
+@app.route('/change_department_name', methods=['PUT'])
+def change_department_name():
+    data = request.json
+    old_name = data.get('old_name')
+    new_name = data.get('new_name')
+
+    if not all([old_name, new_name]):
+        return jsonify({'error': 'Old name and new name fields are required'}), 400
+
+    if not is_valid_department_name(new_name):
+        return jsonify({'error': 'New department name can only contain letters and spaces'}), 400
+
+    try:
+        with get_postgresql_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE department 
+                    SET department_name = %s, last_modified = %s
+                    WHERE department_name = %s
+                """, (new_name, datetime.now().strftime('%d/%m/%Y'), old_name))
+                connection.commit()
+                if cursor.rowcount == 0:
+                    return jsonify({'message': 'Department not found'}), 404
+                return jsonify({'message': 'Department name changed successfully'}), 200
+    except psycopg2.Error as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
