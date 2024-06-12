@@ -1,5 +1,4 @@
 from database_connection import get_postgresql_connection
-
 def initialize_database_company():
     connection = get_postgresql_connection()
     cursor = connection.cursor()
@@ -11,7 +10,7 @@ def initialize_database_company():
             website_url VARCHAR(255) NOT NULL,
             phone_no VARCHAR(15) NOT NULL,
             industry_name VARCHAR(255) NOT NULL,
-            image VARCHAR(255)  -- Store the path to the image
+            image BYTEA
         )
         """)
         connection.commit()
@@ -21,4 +20,3 @@ def initialize_database_company():
     finally:
         cursor.close()
         connection.close()
-

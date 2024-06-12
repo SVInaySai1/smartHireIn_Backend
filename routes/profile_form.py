@@ -171,6 +171,3 @@ def delete_all_profiles():
     finally:
         cursor.close()
         connection.close()
-
-if __name__ == '__main__':
-    app.run(debug=True)
