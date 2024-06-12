@@ -86,10 +86,11 @@ def create_company():
     finally:
         cursor.close()
         connection.close()
-
-@app.route('/get_company', methods=['GET'])
+        
+@app.route('/get_company', methods=['POST'])
 def get_company():
-    company_name = request.args.get('company_name')
+    data = request.get_json()
+    company_name = data.get('company_name')
     
     if not company_name:
         return jsonify({'error': 'Invalid input'}), 400
